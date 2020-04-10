@@ -1,0 +1,7 @@
+.venv/
+.vscode/
+__pycache__
+.pyteat_cache
+*.env
+app/ip2w.ini
+.idea
