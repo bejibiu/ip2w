@@ -1,9 +1,13 @@
 import urllib.request
+import platform
 import os
 import logging
 import json
 
+from configparser import ConfigParser
+
 my_ip = "95.131.149.111"
+path_to_config = os.path.join(os.path.dirname(__file__), 'ip2w.ini') if platform.system() == 'Windows' else '/usr/local/etc/ip2w.ini'
 
 
 class IPWeather:
@@ -20,9 +24,9 @@ class IPWeather:
     </html>
     """
 
-    def __init__(self):
+    def __init__(self, apiid):
         self.body = None
-        self.apiid = os.environ.get('API_KEY', None)
+        self.apiid = apiid
         self.data = None
         self.error = ("400 Bad request", "Error response")
 
@@ -76,8 +80,14 @@ class IPWeather:
             return
 
 
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s %(message)s',
-                    filename=None,
-                    datefmt='%Y.%m.%d %H:%M:%S')
+config = ConfigParser()
+if not os.path.exists(path_to_config):
+    exit(f"File config not found in {path_to_config}")
+config.read(path_to_config)
+config = config['default']
 
-application = IPWeather()
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s %(message)s',
+                    filename=config.get('PATH_TO_LOG_FILE'),
+                    datefmt='%Y.%m.%d %H:%M:%S')
+logging.info('start application')
+application = IPWeather(os.environ.get('API_KEY', None) or config.get("API_KEY"))
