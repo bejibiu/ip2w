@@ -12,7 +12,7 @@ Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
 BuildRequires: systemd
-Requires:	
+Requires: systemd, nginx, uwsgi, pthon3
 Summary:  rpm package to serve ip to weather. 
 
 
@@ -23,7 +23,7 @@ Git version: %{git_version} (branch: %{git_branch})
 %define __etcdir    /usr/local/etc
 %define __logdir    /var/log/ip2w
 %define __bindir    /usr/local/ip2w
-%define __systemddir	/usr/lib/systemd/system
+%define __systemddir /usr/lib/systemd/system
 %define __nginxconf /etc/nginx/conf.d
 
 %prep
