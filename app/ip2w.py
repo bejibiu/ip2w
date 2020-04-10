@@ -7,7 +7,7 @@ import json
 from configparser import ConfigParser
 
 my_ip = "95.131.149.111"
-path_to_config = os.path.join(os.path.dirname(__file__), 'ip2w.ini') if platform.system() == 'Windows' else '/usr/local/etc/ip2w.ini'
+path_to_config = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ip2w.ini') if platform.system() == 'Windows' else '/usr/local/etc/ip2w.ini'
 
 
 class IPWeather:

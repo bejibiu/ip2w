@@ -1,18 +1,18 @@
-import os
-
 import pytest
 
-from app.ip2w import IPWeather
+from app.ip2w import IPWeather, path_to_config
+from configparser import ConfigParser
 
 
 @pytest.fixture
-def load_env():
-    if not os.environ.get("API_KEY", None):
-        with open('app/.env', 'r') as ini:
-            env = ini.read()
-            os.environ['API_KEY'] = env.split('=')[-1]
+def load_api():
+    config = ConfigParser()
+    config.read(path_to_config)
+    config = config['default']
+    return config.get('API_KEY')
+
 
 
 @pytest.fixture
-def application(load_env):
-    return IPWeather()
+def application(load_api):
+    return IPWeather(load_api)
