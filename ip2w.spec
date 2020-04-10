@@ -13,26 +13,32 @@ Requires(preun): systemd
 Requires(postun): systemd
 BuildRequires: systemd
 Requires:	
-Summary:  ...
+Summary:  rpm package to serve ip to weather. 
 
 
 %description
-...
+It's project for training. Service to return weather by location from ip requests or ip from path.
 Git version: %{git_version} (branch: %{git_branch})
 
 %define __etcdir    /usr/local/etc
-%define __logdir    /val/log/
-%define __bindir    /usr/local/ip2w/
-%define __systemddir	/usr/lib/systemd/system/
+%define __logdir    /var/log/ip2w
+%define __bindir    /usr/local/ip2w
+%define __systemddir	/usr/lib/systemd/system
+%define __nginxconf /etc/nginx/conf.d
 
 %prep
-...
 
 %install
 [ "%{buildroot}" != "/" ] && rm -fr %{buildroot}
 %{__mkdir} -p %{buildroot}/%{__systemddir}
-%{__install} -pD -m 644 ... %{buildroot}/%{__systemddir}/%{name}.service
-...
+%{__mkdir} -p %{buildroot}/%{__etcdir}
+%{__mkdir} -p %{buildroot}/%{__logdir}
+%{__mkdir} -p %{buildroot}/%{__bindir}
+%{__install} -pD -m 644  %{name}.service %{buildroot}/%{__systemddir}/%{name}.service
+%{__install} -pD -m 644  app/%{name}.py %{buildroot}/%{__bindir}/%{name}.py
+%{__install} -pD -m 644  %{name}.uwsgi.ini %{buildroot}/%{__bindir}/%{name}.uwsgi.ini
+%{__install} -pD -m 644  %{name}.nginx.conf %{buildroot}/%{__nginxconf}/%{name}.nginx.conf
+%{__install} -pD -m 644  %{name}.ini %{buildroot}/%{__etcdir}/%{name}.ini
 
 %post
 %systemd_post %{name}.service
@@ -50,7 +56,8 @@ systemctl daemon-reload
 
 %files
 %{__logdir}
-%{__bindir}
-%{__systemddir}
-%{__sysconfigdir}
-...
+%{__systemddir}/%{name}.service
+%{__bindir}/%{name}.py
+%{__bindir}/%{name}.uwsgi.ini
+%{__nginxconf}/%{name}.nginx.conf
+%{__etcdir}/%{name}.ini
