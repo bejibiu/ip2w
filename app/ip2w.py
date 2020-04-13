@@ -6,13 +6,18 @@ import json
 
 from configparser import ConfigParser
 
-my_ip = "95.131.149.111"
-path_to_config = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ip2w.ini') if platform.system() == 'Windows' else '/usr/local/etc/ip2w.ini'
+path_to_config = (
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "ip2w.ini")
+    if platform.system() == "Windows"
+    else "/usr/local/etc/ip2w.ini"
+)
 
 
 class IPWeather:
-    ipinfo_address_template = 'https://ipinfo.io/{}'
-    openweather_api_template = 'https://api.openweathermap.org/data/2.5/weather?q={},{}&appid={}'
+    ipinfo_address_template = "https://ipinfo.io/{}"
+    openweather_api_template = (
+        "https://api.openweathermap.org/data/2.5/weather?q={},{}&appid={}"
+    )
     error_message = """
     <html>
     <head>
@@ -34,21 +39,30 @@ class IPWeather:
 
         self.env = env
         logging.info(f'Path = {env["PATH_INFO"]}')
-        ip_addr = self.get_ip_from_path(env['PATH_INFO']) or env['REMOTE_ADDR']
+        ip_addr = self.get_ip_from_path(env["PATH_INFO"]) or env["REMOTE_ADDR"]
         self.fetch_info_by_ip(ip_addr)
         self.fetch_weather()
         if self.body:
-            start_response('200 OK', [('Content-Type', 'application/json'), ('Content-Length', f'{len(self.body)}')])
+            start_response(
+                "200 OK",
+                [
+                    ("Content-Type", "application/json"),
+                    ("Content-Length", f"{len(self.body)}"),
+                ],
+            )
             return [self.body]
-        message = self.error_message.replace('Error response', self.error[1]).encode()
-        logging.info(f'send error message {message}')
-        start_response(self.error[0], [('Content-Type', 'text/html'), ('Content-Length', f'{len(message)}')])
+        message = self.error_message.replace("Error response", self.error[1]).encode()
+        logging.info(f"send error message {message}")
+        start_response(
+            self.error[0],
+            [("Content-Type", "text/html"), ("Content-Length", f"{len(message)}")],
+        )
         return [message]
 
     @staticmethod
     def get_ip_from_path(path_info):
         if path_info:
-            return path_info.split('/')[1]
+            return path_info.split("/")[1]
 
     def fetch_info_by_ip(self, ip_addr):
         logging.info(ip_addr)
@@ -57,26 +71,28 @@ class IPWeather:
             data_str = webUrl.read().decode()
             data = json.loads(data_str)
             logging.info(f"data json {data}")
-            if 'city' in data_str and 'country' in data_str:
+            if "city" in data_str and "country" in data_str:
                 self.data = data
                 return
-            message = f'Ipinfo service did not return information about  {ip_addr}'
+            message = f"Ipinfo service did not return information about  {ip_addr}"
             logging.error(message)
-            self.error = ('400 Bad request', message)
+            self.error = ("400 Bad request", message)
             return
-        logging.error(f'can not fetch ipinfo')
-        self.error = ('400 Bad request', "Ipinfo service return error")
+        logging.error(f"can not fetch ipinfo")
+        self.error = ("400 Bad request", "Ipinfo service return error")
 
     def fetch_weather(self):
         if self.data and self.apiid:
-            path_to_weather = self.openweather_api_template.format(self.data['city'], self.data['country'], self.apiid)
+            path_to_weather = self.openweather_api_template.format(
+                self.data["city"], self.data["country"], self.apiid
+            )
             webUrl = urllib.request.urlopen(path_to_weather)
             if webUrl.getcode() == 200:
                 self.body = webUrl.read()
                 logging.info(f"weather: {self.body}")
                 return
-            logging.error(f'can not fetch weather status code={webUrl.getcode()}')
-            self.error = ('400 Bad request', "Server openweather not available")
+            logging.error(f"can not fetch weather status code={webUrl.getcode()}")
+            self.error = ("400 Bad request", "Server openweather not available")
             return
 
 
@@ -84,10 +100,13 @@ config = ConfigParser()
 if not os.path.exists(path_to_config):
     exit(f"File config not found in {path_to_config}")
 config.read(path_to_config)
-config = config['default']
+config = config["default"]
 
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s %(message)s',
-                    filename=config.get('PATH_TO_LOG_FILE'),
-                    datefmt='%Y.%m.%d %H:%M:%S')
-logging.info('start application')
-application = IPWeather(os.environ.get('API_KEY', None) or config.get("API_KEY"))
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] %(levelname)s %(message)s",
+    filename=config.get("PATH_TO_LOG_FILE"),
+    datefmt="%Y.%m.%d %H:%M:%S",
+)
+logging.info("start application")
+application = IPWeather(os.environ.get("API_KEY", None) or config.get("API_KEY"))
