@@ -7,7 +7,7 @@ import json
 from configparser import ConfigParser
 
 path_to_config = (
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "ip2w.ini")
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "windows.ip2w.ini")
     if platform.system() == "Windows"
     else "/usr/local/etc/ip2w.ini"
 )
@@ -36,7 +36,9 @@ class IPWeather:
         self.error = ("400 Bad request", "Error response")
 
     def __call__(self, env, start_response):
-
+        if self.apiid is None:
+            logging.error("No set api key for openweathermap. Please set key in config")
+            raise Exception("No set api key for openweathermap. Please set key in config")
         self.env = env
         logging.info(f'Path = {env["PATH_INFO"]}')
         ip_addr = self.get_ip_from_path(env["PATH_INFO"]) or env["REMOTE_ADDR"]
@@ -66,7 +68,7 @@ class IPWeather:
 
     def fetch_info_by_ip(self, ip_addr):
         logging.info(ip_addr)
-        webUrl = urllib.request.urlopen(self.ipinfo_address_template.format(ip_addr))
+        webUrl = self.get_connection(self.ipinfo_address_template.format(ip_addr))
         if webUrl.getcode() == 200:
             data_str = webUrl.read().decode()
             data = json.loads(data_str)
@@ -86,7 +88,7 @@ class IPWeather:
             path_to_weather = self.openweather_api_template.format(
                 self.data["city"], self.data["country"], self.apiid
             )
-            webUrl = urllib.request.urlopen(path_to_weather)
+            webUrl = self.get_connection(path_to_weather)
             if webUrl.getcode() == 200:
                 self.body = webUrl.read()
                 logging.info(f"weather: {self.body}")
@@ -94,6 +96,17 @@ class IPWeather:
             logging.error(f"can not fetch weather status code={webUrl.getcode()}")
             self.error = ("400 Bad request", "Server openweather not available")
             return
+
+    @staticmethod
+    def get_connection(url, attempt=3, timeout=30):
+        last_error = None
+        for connection_num in range(attempt):
+            try:
+                return urllib.request.urlopen(url, timeout=timeout)
+            except Exception as e:
+                last_error = e
+        logging.exception(last_error)
+        raise last_error
 
 
 config = ConfigParser()

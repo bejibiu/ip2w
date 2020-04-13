@@ -8,9 +8,8 @@ from configparser import ConfigParser
 def load_api():
     config = ConfigParser()
     config.read(path_to_config)
-    config = config['default']
-    return config.get('API_KEY')
-
+    config = config["default"]
+    return config.get("API_KEY")
 
 
 @pytest.fixture

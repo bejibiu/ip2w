@@ -5,3 +5,4 @@ __pycache__
 *.env
 app/ip2w.ini
 .idea
+windows.ip2w.ini
