@@ -12,103 +12,6 @@ path_to_config = (
     else "/usr/local/etc/ip2w.ini"
 )
 
-
-class IPWeather:
-    ipinfo_address_template = "https://ipinfo.io/{}"
-    openweather_api_template = (
-        "https://api.openweathermap.org/data/2.5/weather?q={},{}&appid={}"
-    )
-    error_message = """
-    <html>
-    <head>
-        <title>Error</title>
-    </head>
-    <body>
-        <h1>Error response</h1>
-    </body>
-    </html>
-    """
-
-    def __init__(self, apiid):
-        self.body = None
-        self.apiid = apiid
-        self.data = None
-        self.error = ("400 Bad request", "Error response")
-
-    def __call__(self, env, start_response):
-        if self.apiid is None:
-            logging.error("No set api key for openweathermap. Please set key in config")
-            raise Exception("No set api key for openweathermap. Please set key in config")
-        self.env = env
-        logging.info(f'Path = {env["PATH_INFO"]}')
-        ip_addr = self.get_ip_from_path(env["PATH_INFO"]) or env["REMOTE_ADDR"]
-        self.fetch_info_by_ip(ip_addr)
-        self.fetch_weather()
-        if self.body:
-            start_response(
-                "200 OK",
-                [
-                    ("Content-Type", "application/json"),
-                    ("Content-Length", f"{len(self.body)}"),
-                ],
-            )
-            return [self.body]
-        message = self.error_message.replace("Error response", self.error[1]).encode()
-        logging.info(f"send error message {message}")
-        start_response(
-            self.error[0],
-            [("Content-Type", "text/html"), ("Content-Length", f"{len(message)}")],
-        )
-        return [message]
-
-    @staticmethod
-    def get_ip_from_path(path_info):
-        if path_info:
-            return path_info.split("/")[1]
-
-    def fetch_info_by_ip(self, ip_addr):
-        logging.info(ip_addr)
-        webUrl = self.get_connection(self.ipinfo_address_template.format(ip_addr))
-        if webUrl.getcode() == 200:
-            data_str = webUrl.read().decode()
-            data = json.loads(data_str)
-            logging.info(f"data json {data}")
-            if "city" in data_str and "country" in data_str:
-                self.data = data
-                return
-            message = f"Ipinfo service did not return information about  {ip_addr}"
-            logging.error(message)
-            self.error = ("400 Bad request", message)
-            return
-        logging.error(f"can not fetch ipinfo")
-        self.error = ("400 Bad request", "Ipinfo service return error")
-
-    def fetch_weather(self):
-        if self.data and self.apiid:
-            path_to_weather = self.openweather_api_template.format(
-                self.data["city"], self.data["country"], self.apiid
-            )
-            webUrl = self.get_connection(path_to_weather)
-            if webUrl.getcode() == 200:
-                self.body = webUrl.read()
-                logging.info(f"weather: {self.body}")
-                return
-            logging.error(f"can not fetch weather status code={webUrl.getcode()}")
-            self.error = ("400 Bad request", "Server openweather not available")
-            return
-
-    @staticmethod
-    def get_connection(url, attempt=3, timeout=30):
-        last_error = None
-        for connection_num in range(attempt):
-            try:
-                return urllib.request.urlopen(url, timeout=timeout)
-            except Exception as e:
-                last_error = e
-        logging.exception(last_error)
-        raise last_error
-
-
 config = ConfigParser()
 if not os.path.exists(path_to_config):
     exit(f"File config not found in {path_to_config}")
@@ -122,4 +25,96 @@ logging.basicConfig(
     datefmt="%Y.%m.%d %H:%M:%S",
 )
 logging.info("start application")
-application = IPWeather(os.environ.get("API_KEY", None) or config.get("API_KEY"))
+error_message = """
+<html>
+<head>
+    <title>Error</title>
+</head>
+<body>
+    <h1>Error response</h1>
+</body>
+</html>
+"""
+
+
+def application(env, start_response):
+    apiid = os.environ.get("API_KEY", None) or config.get("API_KEY")
+    if apiid is None:
+        logging.error("No set api key for openweathermap. Please set key in config")
+        raise Exception("No set api key for openweathermap. Please set key in config")
+    logging.info(f'Path = {env["PATH_INFO"]}')
+    ip_addr = get_ip_from_path(env["PATH_INFO"]) or env["REMOTE_ADDR"]
+    try:
+        info_by_ip = fetch_info_by_ip(ip_addr)
+        body = fetch_weather(info_by_ip, apiid)
+    except urllib.error.URLError as e:
+        body = error_message.replace(
+            "Error response", str(e).replace("<", "&lt").replace(">", "&gt")
+        ).encode()
+        logging.error(e)
+        status = "400 Bad Request"
+        type_message_header = ("Content-Type", "text/html")
+    else:
+        status = "200 OK"
+        type_message_header = ("Content-Type", "application/json")
+    finally:
+        logging.info("finaly")
+        start_response(
+            status, [type_message_header, ("Content-Length", f"{len(body)}")],
+        )
+        logging.info(f"body: {body}")
+        return [body]
+
+
+def get_ip_from_path(path_info):
+    if path_info:
+        return path_info.split("/")[1]
+
+
+def fetch_info_by_ip(ip_addr):
+    ipinfo_address_template = "https://ipinfo.io/{}"
+    logging.info(ip_addr)
+    try:
+        webUrl = get_connection(ipinfo_address_template.format(ip_addr))
+    except urllib.error.URLError:
+        raise urllib.error.URLError("Ipinfo service return error")
+    else:
+        data_str = webUrl.read().decode()
+        data = json.loads(data_str)
+        logging.info(f"data json {data}")
+        if "city" in data_str and "country" in data_str:
+            return data
+        raise urllib.error.URLError(
+            f"Ipinfo service did not return information about  {ip_addr}"
+        )
+
+
+def fetch_weather(data, apiid):
+    openweather_api_template = (
+        "https://api.openweathermap.org/data/2.5/weather?q={},{}&appid={}"
+    )
+    if data:
+        path_to_weather = openweather_api_template.format(
+            data["city"], data["country"], apiid
+        )
+        try:
+            webUrl = get_connection(path_to_weather)
+        except urllib.error.HTTPError:
+            raise urllib.error.URLError(
+                f"can not fetch weather status bad status codes"
+            )
+        else:
+            weather = webUrl.read()
+            logging.info(f"weather: {weather}")
+            return weather
+
+
+def get_connection(url, attempt=3, timeout=30):
+    last_error = None
+    for connection_num in range(attempt):
+        try:
+            return urllib.request.urlopen(url, timeout=timeout)
+        except Exception as e:
+            last_error = e
+    logging.exception(last_error)
+    raise last_error

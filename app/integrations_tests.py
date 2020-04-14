@@ -1,9 +1,9 @@
-import os
+from app.ip2w import fetch_info_by_ip, fetch_weather
 
 
-def test_success_integration_with_ipinfo(application):
-    application.fetch_info_by_ip("8.8.8.8")
-    assert application.data == {
+def test_success_integration_with_ipinfo():
+    data = fetch_info_by_ip("8.8.8.8")
+    assert data == {
         "ip": "8.8.8.8",
         "hostname": "dns.google",
         "city": "Mountain View",
@@ -13,13 +13,13 @@ def test_success_integration_with_ipinfo(application):
         "org": "AS15169 Google LLC",
         "postal": "94035",
         "timezone": "America/Los_Angeles",
-        "readme": "https://ipinfo.io/missingauth"}
+        "readme": "https://ipinfo.io/missingauth",
+    }
 
 
-def test_success_integration_with_openweather(application):
-    assert application.apiid
-    application.data = {"city": "London", "country": "UK"}
+def test_success_integration_with_openweather(api_key):
+    data = {"city": "London", "country": "UK"}
 
-    application.fetch_weather()
+    body = fetch_weather(data, api_key)
 
-    assert 'temp' in application.body.decode()
+    assert "temp" in body.decode()
