@@ -27,7 +27,7 @@ Git version: %{git_version} (branch: %{git_branch})
 %define __nginxconf /etc/nginx/conf.d
 
 %prep
-
+%setup -q -n otus-%{current_datetime}
 %install
 [ "%{buildroot}" != "/" ] && rm -fr %{buildroot}
 %{__mkdir} -p %{buildroot}/%{__systemddir}
